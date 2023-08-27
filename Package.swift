@@ -33,8 +33,8 @@ let package = Package(
         ),
         .binaryTarget(
             name: "run-script-bin",
-            url: "https://github.com/p-x9/RunScriptPlugin/releases/download/0.3.0/run-script-bin.artifactbundle.zip",
-            checksum: "3e43154c72e5d7bdadbe000cd23f78cbcf8f200149ea28a969539c22ef7be524"
+            url: "https://github.com/goncalo-frade-iohk/RunScriptPlugin/releases/download/0.4.0/run-script-bin.artifactbundle.zip",
+            checksum: "13aca5568ee58fdaf0e7e55e94c384ac9ea455fd1efd20588e417fa640063bae"
         ),
 //        DEBUG
 //        .binaryTarget(name: "run-script-bin", path: "./run-script-bin.artifactbundle.zip"),
