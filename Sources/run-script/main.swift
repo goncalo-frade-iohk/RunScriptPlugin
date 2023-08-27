@@ -6,6 +6,7 @@
 //  
 //
 
+import Combine
 import Foundation
 import Yams
 import ArgumentParser
@@ -29,7 +30,7 @@ enum Timing: String, EnumerableFlag, ExpressibleByArgument {
     }
 }
 
-struct RunScript: ParsableCommand {
+struct RunScript: AsyncParsableCommand {
     static let configuration: CommandConfiguration = .init(
         commandName: "RunScript",
         abstract: "Run shell scripts configured in yaml files",
@@ -47,7 +48,7 @@ struct RunScript: ParsableCommand {
     @Flag(name: .customLong("silence"), help: "Do not output logs")
     var silence: Bool = false
 
-    func run() throws {
+    func run() async throws {
         let configFileURL = URL(fileURLWithPath: config)
 
         let fileManager = FileManager.default
@@ -66,9 +67,9 @@ struct RunScript: ParsableCommand {
         let scripts = config.scripts(for: timing)
 
         log("🏃[Start] RunScriptPlugin(\(timing.rawValue))")
-        try scripts.enumerated().forEach { index, script in
+        try await scripts.enumerated().asyncForEach { index, script in
             log("🏃[script] \(script.name ?? String(index))...")
-            try run(script)
+            try await run(script)
         }
         log("🏃[End] RunScriptPlugin(\(timing.rawValue))")
     }
@@ -83,12 +84,23 @@ extension RunScript {
 }
 
 extension RunScript {
-    func run(_ script: Script) throws {
+    func run(_ script: Script) async throws {
+        let outputPublisher = PassthroughSubject<String, Never>()
+        let completion = outputPublisher
+            .sink { print($0) }
         let process = Process()
+        let outputPipe = Pipe()
         let errorPipe = Pipe()
-
-        process.launchPath = script.launchPath ?? "/bin/sh"
+        process.standardOutput = outputPipe
         process.standardError = errorPipe
+
+        process.executableURL = URL(fileURLWithPath:"/bin/sh")
+
+        var environment = ProcessInfo.processInfo.environment
+        if let environmentVars = script.environment {
+            environment.merge(environmentVars) { $1 }
+        }
+        process.environment = environment
 
         if let path = script.path {
             process.arguments = [path]
@@ -96,6 +108,10 @@ extension RunScript {
             process.arguments = arguments
         } else if let script = script.script {
             process.arguments = ["-c", script]
+        }
+
+        for try await line in outputPipe.fileHandleForReading.bytes.lines {
+            print(line)
         }
 
         try process.run()
@@ -109,3 +125,27 @@ extension RunScript {
 
 RunScript.main()
 #endif
+
+extension Sequence {
+    func asyncMap<T>(
+        _ transform: (Element) async throws -> T
+    ) async rethrows -> [T] {
+        var values = [T]()
+
+        for element in self {
+            try await values.append(transform(element))
+        }
+
+        return values
+    }
+}
+
+extension Sequence {
+    func asyncForEach(
+        _ operation: (Element) async throws -> Void
+    ) async rethrows {
+        for element in self {
+            try await operation(element)
+        }
+    }
+}

@@ -4,6 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "RunScriptPlugin",
+    platforms: [.macOS(.v12)],
     products: [
         .plugin(
             name: "RunScriptPlugin",

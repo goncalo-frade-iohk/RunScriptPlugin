@@ -25,6 +25,7 @@ struct Script: Codable {
     let script: String?
 
     let arguments: [String]?
+    let environment: [String: String]?
 }
 
 extension Config {
