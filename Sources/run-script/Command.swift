@@ -30,6 +30,7 @@ enum Timing: String, EnumerableFlag, ExpressibleByArgument {
     }
 }
 
+@main
 struct RunScript: AsyncParsableCommand {
     static let configuration: CommandConfiguration = .init(
         commandName: "RunScript",
@@ -86,8 +87,6 @@ extension RunScript {
 extension RunScript {
     func run(_ script: Script) async throws {
         let outputPublisher = PassthroughSubject<String, Never>()
-        let completion = outputPublisher
-            .sink { print($0) }
         let process = Process()
         let outputPipe = Pipe()
         let errorPipe = Pipe()
@@ -100,6 +99,7 @@ extension RunScript {
         if let environmentVars = script.environment {
             environment.merge(environmentVars) { $1 }
         }
+
         process.environment = environment
 
         if let path = script.path {
@@ -110,20 +110,21 @@ extension RunScript {
             process.arguments = ["-c", script]
         }
 
-        for try await line in outputPipe.fileHandleForReading.bytes.lines {
-            print(line)
-        }
+        do {
+            try process.run()
 
-        try process.run()
-
-        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-        if let error = String(data: errorData, encoding: .utf8) {
-            log("warning: [RunScriptPlugin] " + error)
+            for try await line in outputPipe.fileHandleForReading.bytes.lines {
+                print(line)
+            }
+        } catch {
+            let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+            if let error = String(data: errorData, encoding: .utf8) {
+                log("warning: [RunScriptPlugin] " + error)
+            }
         }
     }
 }
 
-RunScript.main()
 #endif
 
 extension Sequence {

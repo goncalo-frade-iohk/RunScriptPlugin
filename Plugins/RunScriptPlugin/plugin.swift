@@ -29,7 +29,7 @@ struct RunScriptPlugin: BuildToolPlugin {
         }
 
         let arguments = ["--config", configuration.string]
-
+        
         return [
             .prebuildCommand(
                 displayName: "RunScriptPlugin(PreBuild)",
